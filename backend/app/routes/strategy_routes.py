@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.models import strategies_store
 from app.schemas import Strategy, StrategyCreate, StrategyUpdate, StrategyLeg
+from app.services.storage import save_strategies
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
@@ -28,6 +29,7 @@ def create_strategy(payload: StrategyCreate):
         created_at=datetime.utcnow(),
     )
     strategies_store[strategy_id] = strategy
+    save_strategies(strategies_store)
     return strategy
 
 
@@ -66,6 +68,7 @@ def update_strategy(strategy_id: str, payload: StrategyUpdate):
         strategy.legs = legs
 
     strategies_store[strategy_id] = strategy
+    save_strategies(strategies_store)
     return strategy
 
 
@@ -75,4 +78,5 @@ def delete_strategy(strategy_id: str):
     if strategy_id not in strategies_store:
         raise HTTPException(status_code=404, detail="Strategy not found")
     del strategies_store[strategy_id]
+    save_strategies(strategies_store)
     return {"message": "Strategy deleted"}

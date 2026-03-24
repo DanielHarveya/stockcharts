@@ -1,10 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { Database, Layers, Play, Settings } from 'lucide-react';
+import { Database, Layers, Play, Settings, Briefcase, LineChart, Clock } from 'lucide-react';
 
 const navItems = [
   { to: '/settings', icon: Database, label: 'Settings' },
   { to: '/strategy', icon: Layers, label: 'Strategy' },
   { to: '/backtest', icon: Play, label: 'Backtest' },
+  { to: '/portfolio', icon: Briefcase, label: 'Portfolio' },
+  { to: '/analysis', icon: LineChart, label: 'Analysis' },
+  { to: '/history', icon: Clock, label: 'History' },
 ];
 
 function Sidebar() {

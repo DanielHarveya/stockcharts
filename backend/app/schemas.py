@@ -25,6 +25,7 @@ class ExitReason(str, Enum):
     MANUAL_STOP = "manual_stop"
     EXPIRY = "expiry"
     RISK_LIMIT = "risk_limit"
+    TRAILING_SL = "trailing_sl"
 
 
 # ── V1 Config Models ──────────────────────────────────────────────────
@@ -156,6 +157,7 @@ class StrategyLeg(BaseModel):
     quantity: int
     sl: Optional[float] = None  # stop loss in absolute points
     target: Optional[float] = None  # target in absolute points
+    trailing_sl: Optional[float] = None  # trailing stop loss in points - trails from peak profit
     lot_size: int = 1
 
 
@@ -228,6 +230,7 @@ class BacktestResult(BaseModel):
     # V1 fields
     events: List[TradeEvent] = Field(default_factory=list)
     capital: CapitalState = Field(default_factory=CapitalState)
+    underlying_prices: Dict[str, float] = Field(default_factory=dict)  # {symbol: price}
 
 
 class BacktestState(BaseModel):

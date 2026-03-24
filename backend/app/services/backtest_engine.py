@@ -28,6 +28,7 @@ class LegState:
         "leg", "entry_price", "exit_price", "current_price",
         "is_active", "pnl", "direction", "greeks_dict",
         "state", "exit_reason", "sl_level", "target_level",
+        "peak_pnl",
     )
 
     def __init__(self, leg: StrategyLeg):
@@ -43,6 +44,7 @@ class LegState:
         self.exit_reason: str = "active"
         self.sl_level: Optional[float] = None
         self.target_level: Optional[float] = None
+        self.peak_pnl: float = 0.0
 
 
 class BacktestEngine:
@@ -399,6 +401,28 @@ class BacktestEngine:
                 # Calculate running PnL
                 state.pnl = (state.current_price - state.entry_price) * state.leg.quantity * state.direction
 
+                # Trailing SL check
+                if state.leg.trailing_sl is not None and state.leg.trailing_sl > 0 and state.is_active:
+                    state.peak_pnl = max(state.peak_pnl, state.pnl)
+                    trailing_loss = state.peak_pnl - state.pnl
+                    if state.peak_pnl > 0 and trailing_loss >= state.leg.trailing_sl:
+                        state.exit_price = state.current_price
+                        state.is_active = False
+                        state.state = "EXITED"
+                        state.exit_reason = "trailing_sl"
+                        trail_event = TradeEvent(
+                            timestamp=ts.isoformat() if isinstance(ts, datetime) else str(ts),
+                            event_type="TRAILING_SL",
+                            leg_id=leg_id,
+                            symbol=leg.symbol,
+                            details=f"Trailing SL hit. Peak PnL={state.peak_pnl:.2f}, Loss from peak={trailing_loss:.2f}",
+                            price=state.current_price,
+                            pnl=state.pnl,
+                        )
+                        tick_events.append(trail_event)
+                        self.events.append(trail_event)
+                        continue
+
                 # Calculate Greeks for option legs
                 if leg.option_type in ("CE", "PE") and leg.strike is not None:
                     info = instrument_info.get(leg.id)
@@ -545,6 +569,14 @@ class BacktestEngine:
                     total_greeks[g] += state.greeks_dict.get(g, 0.0)
 
             if leg_results:
+                # Capture underlying spot prices for each instrument at this timestamp
+                underlying_prices: Dict[str, float] = {}
+                for leg in self.strategy.legs:
+                    token_candles = candles_by_token.get(leg.instrument_token, {})
+                    candle = token_candles.get(ts)
+                    if candle is not None:
+                        underlying_prices[leg.symbol or str(leg.instrument_token)] = candle["close"]
+
                 result = BacktestResult(
                     timestamp=ts.isoformat() if isinstance(ts, datetime) else str(ts),
                     leg_results=leg_results,
@@ -552,6 +584,7 @@ class BacktestEngine:
                     greeks=Greeks(**total_greeks),
                     events=tick_events,
                     capital=capital_state,
+                    underlying_prices=underlying_prices,
                 )
                 self.results.append(result)
 

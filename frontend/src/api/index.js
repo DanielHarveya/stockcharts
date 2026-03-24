@@ -38,4 +38,40 @@ export const backtestAPI = {
   exportCsv: (id) => window.open(`/api/backtest/${id}/export/csv`, '_blank'),
 };
 
+export const historyAPI = {
+  list: () => api.get('/history'),
+  get: (id) => api.get(`/history/${id}`),
+  delete: (id) => api.delete(`/history/${id}`),
+  compare: (ids) => api.get('/history/compare', { params: { ids: ids.join(',') } }),
+};
+
+export const templateAPI = {
+  list: () => api.get('/templates'),
+  get: (name) => api.get(`/templates/${name}`),
+};
+
+export const scenarioAPI = {
+  analyze: (data) => api.post('/scenario/analyze', data),
+  matrix: (data) => api.post('/scenario/matrix', data),
+};
+
+export const portfolioAPI = {
+  run: (data) => api.post('/portfolio/run', data),
+  status: (id) => api.get(`/portfolio/${id}/status`),
+  results: (id) => api.get(`/portfolio/${id}/results`),
+  analytics: (id) => api.get(`/portfolio/${id}/analytics`),
+};
+
+export const ivAPI = {
+  surface: (data) => api.post('/iv/surface', data),
+};
+
+export const walkforwardAPI = {
+  run: (data) => api.post('/walkforward/run', data),
+};
+
+export const optimizerAPI = {
+  run: (data) => api.post('/optimizer/run', data),
+};
+
 export default api;

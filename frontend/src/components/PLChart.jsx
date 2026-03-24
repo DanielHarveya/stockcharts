@@ -19,12 +19,13 @@ const LEG_COLORS = [
 function PLChart() {
   const backtestResults = useStore((s) => s.backtestResults);
 
-  const { chartData, legKeys } = useMemo(() => {
+  const { chartData, legKeys, spotKeys } = useMemo(() => {
     if (!backtestResults || backtestResults.length === 0) {
-      return { chartData: [], legKeys: [] };
+      return { chartData: [], legKeys: [], spotKeys: [] };
     }
 
     const keys = new Set();
+    const sKeys = new Set();
     const data = backtestResults.map((r) => {
       const point = {
         time: r.timestamp || r.time || '',
@@ -53,10 +54,19 @@ function PLChart() {
         });
       }
 
+      // Add underlying prices for spot overlay
+      if (r.underlying_prices) {
+        Object.entries(r.underlying_prices).forEach(([sym, price]) => {
+          const key = `spot_${sym}`;
+          sKeys.add(key);
+          point[key] = price;
+        });
+      }
+
       return point;
     });
 
-    return { chartData: data, legKeys: Array.from(keys) };
+    return { chartData: data, legKeys: Array.from(keys), spotKeys: Array.from(sKeys) };
   }, [backtestResults]);
 
   if (chartData.length === 0) {
@@ -82,22 +92,34 @@ function PLChart() {
           interval="preserveStartEnd"
         />
         <YAxis
+          yAxisId="left"
           stroke="#64748b"
           tick={{ fontSize: 11, fill: '#94a3b8' }}
           tickLine={{ stroke: '#475569' }}
           tickFormatter={(v) => v.toLocaleString()}
         />
+        {spotKeys.length > 0 && (
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            stroke="#64748b"
+            tick={{ fontSize: 11, fill: '#94a3b8' }}
+            tickLine={{ stroke: '#475569' }}
+            tickFormatter={(v) => v.toLocaleString()}
+          />
+        )}
         <Tooltip content={<CustomTooltip />} />
         <Legend
           wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }}
           iconType="line"
         />
-        <ReferenceLine y={0} stroke="#475569" strokeDasharray="4 4" />
+        <ReferenceLine yAxisId="left" y={0} stroke="#475569" strokeDasharray="4 4" />
 
         {/* Leg lines */}
         {legKeys.map((key, i) => (
           <Line
             key={key}
+            yAxisId="left"
             type="monotone"
             dataKey={key}
             name={key.replace('leg_', 'Leg ')}
@@ -110,6 +132,7 @@ function PLChart() {
 
         {/* Total P&L line */}
         <Line
+          yAxisId="left"
           type="monotone"
           dataKey="total_pnl"
           name="Total P&L"
@@ -118,6 +141,22 @@ function PLChart() {
           dot={false}
           activeDot={{ r: 4, stroke: '#ffffff', strokeWidth: 2 }}
         />
+
+        {/* Spot price overlay lines */}
+        {spotKeys.map((key, i) => (
+          <Line
+            key={key}
+            yAxisId="right"
+            type="monotone"
+            dataKey={key}
+            name={key.replace('spot_', 'Spot ')}
+            stroke={['#facc15', '#38bdf8', '#f472b6', '#a3e635'][i % 4]}
+            strokeWidth={1.5}
+            strokeDasharray="6 3"
+            dot={false}
+            activeDot={{ r: 3 }}
+          />
+        ))}
       </LineChart>
     </ResponsiveContainer>
   );

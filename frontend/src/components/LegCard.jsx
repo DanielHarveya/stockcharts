@@ -182,6 +182,23 @@ function LegCard({ leg, index, onChange, onRemove }) {
             />
           </div>
         </div>
+
+        {/* Trailing SL */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Trailing SL (pts)</label>
+            <input
+              type="number"
+              className="input-field mono"
+              placeholder="0"
+              min="0"
+              step="0.5"
+              value={leg.trailing_sl || ''}
+              onChange={(e) => handleFieldChange('trailing_sl', parseFloat(e.target.value) || '')}
+            />
+            <p className="text-xs text-slate-500 mt-1">Trails from peak profit</p>
+          </div>
+        </div>
       </div>
     </div>
   );

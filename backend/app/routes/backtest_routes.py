@@ -15,6 +15,7 @@ from app.schemas import (
     BacktestStatusResponse,
 )
 from app.services.backtest_engine import BacktestEngine
+from app.routes.history_routes import auto_save_backtest
 
 router = APIRouter(prefix="/api/backtest", tags=["backtest"])
 
@@ -56,6 +57,12 @@ async def start_backtest(config: BacktestConfig):
             backtests_store[backtest_id].events = engine.events
             backtests_store[backtest_id].analytics = engine.compute_analytics()
             backtests_store[backtest_id].data_validation = engine.data_validation
+            # Auto-save completed backtests to persistent history
+            if engine.status in ("completed", "stopped"):
+                try:
+                    auto_save_backtest(backtests_store[backtest_id])
+                except Exception:
+                    pass
 
     asyncio.get_event_loop().create_task(_run_backtest())
 

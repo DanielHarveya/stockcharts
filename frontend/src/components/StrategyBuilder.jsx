@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Layers, Edit3, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Save, Layers, Edit3, Trash2, Loader2, FileText } from 'lucide-react';
 import useStore from '../store/useStore';
+import { templateAPI } from '../api';
 import LegCard from './LegCard';
 
 const emptyLeg = {
@@ -16,6 +17,7 @@ const emptyLeg = {
   quantity: 1,
   sl: '',
   target: '',
+  trailing_sl: '',
 };
 
 function StrategyBuilder() {
@@ -30,10 +32,29 @@ function StrategyBuilder() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     loadStrategies();
   }, [loadStrategies]);
+
+  useEffect(() => {
+    templateAPI.list().then(res => setTemplates(res.data.templates || res.data || [])).catch(() => {});
+  }, []);
+
+  const handleLoadTemplate = (template) => {
+    setName(template.name);
+    const templateLegs = template.legs.map(tl => ({
+      ...emptyLeg,
+      action: tl.action,
+      option_type: tl.option_type || '',
+      quantity: tl.quantity || 1,
+      strike: tl.strike_offset || '',
+    }));
+    setLegs(templateLegs);
+    setShowTemplates(false);
+  };
 
   useEffect(() => {
     if (currentStrategy && editingId === currentStrategy.id) {
@@ -128,15 +149,45 @@ function StrategyBuilder() {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Strategy Name</label>
-          <input
-            type="text"
-            className="input-field max-w-md"
-            placeholder="e.g., Iron Condor NIFTY"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+        <div className="mb-4 flex items-end gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px] max-w-md">
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Strategy Name</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g., Iron Condor NIFTY"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <button className="btn-secondary text-sm flex items-center gap-2" onClick={() => setShowTemplates(!showTemplates)}>
+              <FileText className="w-4 h-4" /> Load Template
+            </button>
+            {showTemplates && (
+              <div className="absolute z-20 mt-2 w-80 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-80 overflow-auto">
+                {templates.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-slate-400">No templates available</div>
+                ) : (
+                  templates.map((t, i) => (
+                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-slate-700 border-b border-slate-700/30"
+                      onClick={() => handleLoadTemplate(t)}>
+                      <div className="text-sm font-medium text-white">{t.name}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{t.description}</div>
+                      <div className="flex gap-1 mt-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          t.category === 'bullish' ? 'bg-emerald-600/20 text-emerald-400' :
+                          t.category === 'bearish' ? 'bg-red-600/20 text-red-400' :
+                          t.category === 'neutral' ? 'bg-blue-600/20 text-blue-400' :
+                          'bg-amber-600/20 text-amber-400'
+                        }`}>{t.category}</span>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
