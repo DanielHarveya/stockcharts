@@ -27,31 +27,53 @@ function GreeksPanel() {
     let latest = {};
 
     backtestResults.forEach((r) => {
-      const legsData = r.legs || r.greeks || {};
-      Object.entries(legsData).forEach(([name, data]) => {
-        if (typeof data !== 'object') return;
-        names.add(name);
-
-        if (!history[name]) history[name] = [];
-
-        const greekPoint = { time: r.timestamp || r.time || '' };
-        GREEK_KEYS.forEach((g) => {
-          greekPoint[g] = data[g] ?? data.greeks?.[g] ?? 0;
+      // leg_results is an ARRAY from backend
+      if (r.leg_results && Array.isArray(r.leg_results)) {
+        r.leg_results.forEach((lr) => {
+          const name = lr.symbol || lr.leg_id;
+          names.add(name);
+          if (!history[name]) history[name] = [];
+          const greekPoint = { time: r.timestamp || '' };
+          GREEK_KEYS.forEach((g) => {
+            greekPoint[g] = lr[g] ?? 0;
+          });
+          history[name].push(greekPoint);
         });
-        history[name].push(greekPoint);
-      });
+      } else {
+        const legsData = r.legs || r.greeks || {};
+        Object.entries(legsData).forEach(([name, data]) => {
+          if (typeof data !== 'object') return;
+          names.add(name);
+          if (!history[name]) history[name] = [];
+          const greekPoint = { time: r.timestamp || r.time || '' };
+          GREEK_KEYS.forEach((g) => {
+            greekPoint[g] = data[g] ?? data.greeks?.[g] ?? 0;
+          });
+          history[name].push(greekPoint);
+        });
+      }
     });
 
     // Get latest values
     const lastResult = backtestResults[backtestResults.length - 1];
-    const lastLegs = lastResult?.legs || lastResult?.greeks || {};
-    Object.entries(lastLegs).forEach(([name, data]) => {
-      if (typeof data !== 'object') return;
-      latest[name] = {};
-      GREEK_KEYS.forEach((g) => {
-        latest[name][g] = data[g] ?? data.greeks?.[g] ?? 0;
+    if (lastResult?.leg_results && Array.isArray(lastResult.leg_results)) {
+      lastResult.leg_results.forEach((lr) => {
+        const name = lr.symbol || lr.leg_id;
+        latest[name] = {};
+        GREEK_KEYS.forEach((g) => {
+          latest[name][g] = lr[g] ?? 0;
+        });
       });
-    });
+    } else {
+      const lastLegs = lastResult?.legs || lastResult?.greeks || {};
+      Object.entries(lastLegs).forEach(([name, data]) => {
+        if (typeof data !== 'object') return;
+        latest[name] = {};
+        GREEK_KEYS.forEach((g) => {
+          latest[name][g] = data[g] ?? data.greeks?.[g] ?? 0;
+        });
+      });
+    }
 
     return { latestGreeks: latest, legNames: Array.from(names), greeksHistory: history };
   }, [backtestResults]);

@@ -26,27 +26,51 @@ function PLTable() {
         legs: {},
       };
 
-      const legsData = r.legs || r.leg_pnls || {};
-      Object.entries(legsData).forEach(([name, data]) => {
-        names.add(name);
-        if (typeof data === 'object') {
+      // leg_results is an ARRAY from backend
+      if (r.leg_results && Array.isArray(r.leg_results)) {
+        r.leg_results.forEach((lr) => {
+          const name = lr.symbol || lr.leg_id;
+          names.add(name);
           row.legs[name] = {
-            symbol: data.symbol || name,
-            price: data.price ?? data.ltp ?? '-',
-            pnl: data.pnl ?? 0,
-            sl_hit: data.sl_hit || false,
-            target_hit: data.target_hit || false,
+            symbol: lr.symbol || name,
+            price: lr.current_price ?? '-',
+            pnl: lr.pnl ?? 0,
+            sl_hit: lr.exit_reason === 'stop_loss',
+            target_hit: lr.exit_reason === 'target',
+            state: lr.state || 'ENTERED',
+            exit_reason: lr.exit_reason || 'active',
+            is_active: lr.is_active !== false,
           };
-        } else {
-          row.legs[name] = {
-            symbol: name,
-            price: '-',
-            pnl: data,
-            sl_hit: false,
-            target_hit: false,
-          };
-        }
-      });
+        });
+      } else {
+        const legsData = r.legs || r.leg_pnls || {};
+        Object.entries(legsData).forEach(([name, data]) => {
+          names.add(name);
+          if (typeof data === 'object') {
+            row.legs[name] = {
+              symbol: data.symbol || name,
+              price: data.price ?? data.ltp ?? '-',
+              pnl: data.pnl ?? 0,
+              sl_hit: data.sl_hit || false,
+              target_hit: data.target_hit || false,
+              state: data.state || 'ENTERED',
+              exit_reason: data.exit_reason || 'active',
+              is_active: data.is_active !== false,
+            };
+          } else {
+            row.legs[name] = {
+              symbol: name,
+              price: '-',
+              pnl: data,
+              sl_hit: false,
+              target_hit: false,
+              state: 'ENTERED',
+              exit_reason: 'active',
+              is_active: true,
+            };
+          }
+        });
+      }
 
       return row;
     });
@@ -123,11 +147,19 @@ function PLTable() {
                         (leg.pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
                       }`}>
                         {(leg.pnl ?? 0) >= 0 ? '+' : ''}{Number(leg.pnl ?? 0).toFixed(2)}
-                        {leg.sl_hit && (
-                          <span className="ml-1 text-[10px] bg-red-600/20 text-red-400 px-1 rounded">SL</span>
-                        )}
-                        {leg.target_hit && (
-                          <span className="ml-1 text-[10px] bg-emerald-600/20 text-emerald-400 px-1 rounded">TGT</span>
+                        {!leg.is_active && leg.exit_reason !== 'active' && (
+                          <span className={`ml-1 text-[10px] px-1 rounded ${
+                            leg.exit_reason === 'stop_loss' ? 'bg-red-600/20 text-red-400' :
+                            leg.exit_reason === 'target' ? 'bg-emerald-600/20 text-emerald-400' :
+                            leg.exit_reason === 'time_exit' ? 'bg-amber-600/20 text-amber-400' :
+                            leg.exit_reason === 'risk_limit' ? 'bg-red-600/30 text-red-300' :
+                            'bg-slate-600/20 text-slate-400'
+                          }`}>
+                            {leg.exit_reason === 'stop_loss' ? 'SL' :
+                             leg.exit_reason === 'target' ? 'TGT' :
+                             leg.exit_reason === 'time_exit' ? 'TIME' :
+                             leg.exit_reason === 'risk_limit' ? 'RISK' : leg.exit_reason}
+                          </span>
                         )}
                       </span>
                     </div>

@@ -14,7 +14,7 @@ const emptyLeg = {
   instrument_token: '',
   action: 'BUY',
   quantity: 1,
-  stop_loss: '',
+  sl: '',
   target: '',
 };
 
@@ -204,33 +204,54 @@ function StrategyBuilder() {
             {strategies.map((strategy) => (
               <div
                 key={strategy.id}
-                className="flex items-center justify-between px-4 py-3 bg-slate-800/60 rounded-lg border border-slate-700/30 hover:border-slate-600/50 transition-all"
+                className="px-4 py-3 bg-slate-800/60 rounded-lg border border-slate-700/30 hover:border-slate-600/50 transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <Layers className="w-4 h-4 text-indigo-400" />
-                  <div>
-                    <span className="text-sm font-medium text-white">{strategy.name}</span>
-                    <span className="text-xs text-slate-500 ml-2">
-                      {strategy.legs?.length || 0} leg{(strategy.legs?.length || 0) !== 1 ? 's' : ''}
-                    </span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Layers className="w-4 h-4 text-indigo-400" />
+                    <div>
+                      <span className="text-sm font-medium text-white">{strategy.name}</span>
+                      <span className="text-xs text-slate-500 ml-2">
+                        {strategy.legs?.length || 0} leg{(strategy.legs?.length || 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-indigo-400 hover:bg-indigo-600/10 transition-all"
+                      onClick={() => handleEdit(strategy)}
+                      title="Edit"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-400 hover:bg-red-600/10 transition-all"
+                      onClick={() => handleDelete(strategy.id)}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-indigo-400 hover:bg-indigo-600/10 transition-all"
-                    onClick={() => handleEdit(strategy)}
-                    title="Edit"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-400 hover:bg-red-600/10 transition-all"
-                    onClick={() => handleDelete(strategy.id)}
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {/* Leg Summary */}
+                {strategy.legs && strategy.legs.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {strategy.legs.map((leg, li) => (
+                      <span
+                        key={li}
+                        className={`text-xs px-2 py-1 rounded-md border ${
+                          leg.action === 'BUY'
+                            ? 'bg-emerald-600/10 border-emerald-600/30 text-emerald-400'
+                            : 'bg-red-600/10 border-red-600/30 text-red-400'
+                        }`}
+                      >
+                        {leg.action} {leg.quantity || 1}x {leg.symbol || 'N/A'}
+                        {leg.strike ? ` ${leg.strike}` : ''}
+                        {leg.option_type ? ` ${leg.option_type}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

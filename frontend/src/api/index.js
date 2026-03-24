@@ -32,6 +32,10 @@ export const backtestAPI = {
   resume: (id) => api.post(`/backtest/${id}/resume`),
   stop: (id) => api.post(`/backtest/${id}/stop`),
   results: (id) => api.get(`/backtest/${id}/results`),
+  analytics: (id) => api.get(`/backtest/${id}/analytics`),
+  events: (id) => api.get(`/backtest/${id}/events`),
+  validation: (id) => api.get(`/backtest/${id}/validation`),
+  exportCsv: (id) => window.open(`/api/backtest/${id}/export/csv`, '_blank'),
 };
 
 export default api;

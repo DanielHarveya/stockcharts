@@ -165,8 +165,8 @@ function LegCard({ leg, index, onChange, onRemove }) {
               placeholder="0"
               min="0"
               step="0.5"
-              value={leg.stop_loss || ''}
-              onChange={(e) => handleFieldChange('stop_loss', parseFloat(e.target.value) || '')}
+              value={leg.sl || ''}
+              onChange={(e) => handleFieldChange('sl', parseFloat(e.target.value) || '')}
             />
           </div>
           <div>

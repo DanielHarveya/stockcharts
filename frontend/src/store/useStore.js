@@ -54,9 +54,17 @@ const useStore = create((set, get) => ({
     end_date: '',
     interval_minutes: 1,
     entry_time: '09:20',
+    execution: { slippage_model: 'none', slippage_value: 0 },
+    entry_conditions: { condition_type: 'immediate', value: null },
+    exit_config: { exit_time: '', dte_exit: null },
+    risk: { max_loss: null, max_drawdown: null, max_loss_per_leg: null },
+    capital: { initial_capital: 1000000 },
   },
   backtestElapsed: 0,
   backtestCurrentTimestamp: null,
+  backtestAnalytics: null,
+  backtestEvents: [],
+  backtestCapital: null,
 
   // Database Actions
   setDbConfig: (config) =>
@@ -185,7 +193,10 @@ const useStore = create((set, get) => ({
   startBacktest: async () => {
     const { currentStrategy, backtestConfig } = get();
     if (!currentStrategy) return;
-    set({ backtestStatus: 'running', backtestResults: [], backtestElapsed: 0, backtestCurrentTimestamp: null });
+    set({
+      backtestStatus: 'running', backtestResults: [], backtestElapsed: 0,
+      backtestCurrentTimestamp: null, backtestAnalytics: null, backtestEvents: [], backtestCapital: null,
+    });
     try {
       const res = await backtestAPI.run({
         strategy_id: currentStrategy.id,
@@ -232,13 +243,45 @@ const useStore = create((set, get) => ({
   },
 
   addResult: (result) =>
-    set((state) => ({
-      backtestResults: [...state.backtestResults, result],
-      backtestCurrentTimestamp: result.timestamp || result.time,
-    })),
+    set((state) => {
+      const newEvents = result.events
+        ? [...state.backtestEvents, ...result.events]
+        : state.backtestEvents;
+      return {
+        backtestResults: [...state.backtestResults, result],
+        backtestCurrentTimestamp: result.timestamp || result.time,
+        backtestEvents: newEvents,
+        backtestCapital: result.capital || state.backtestCapital,
+      };
+    }),
 
   clearResults: () =>
-    set({ backtestResults: [], backtestId: null, backtestStatus: 'idle', backtestElapsed: 0, backtestCurrentTimestamp: null }),
+    set({
+      backtestResults: [], backtestId: null, backtestStatus: 'idle',
+      backtestElapsed: 0, backtestCurrentTimestamp: null,
+      backtestAnalytics: null, backtestEvents: [], backtestCapital: null,
+    }),
+
+  fetchAnalytics: async () => {
+    const { backtestId } = get();
+    if (!backtestId) return;
+    try {
+      const res = await backtestAPI.analytics(backtestId);
+      set({ backtestAnalytics: res.data });
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    }
+  },
+
+  addEvent: (event) =>
+    set((state) => ({ backtestEvents: [...state.backtestEvents, event] })),
+
+  setCapital: (capital) => set({ backtestCapital: capital }),
+
+  exportCsv: () => {
+    const { backtestId } = get();
+    if (backtestId) backtestAPI.exportCsv(backtestId);
+  },
 
   setBacktestStatus: (status) => set({ backtestStatus: status }),
   setBacktestElapsed: (elapsed) => set({ backtestElapsed: elapsed }),

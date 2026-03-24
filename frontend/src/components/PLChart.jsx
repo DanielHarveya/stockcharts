@@ -32,7 +32,14 @@ function PLChart() {
         total_pnl: r.total_pnl ?? r.total ?? 0,
       };
 
-      if (r.legs) {
+      // leg_results is an ARRAY from backend
+      if (r.leg_results && Array.isArray(r.leg_results)) {
+        r.leg_results.forEach((lr) => {
+          const key = `leg_${lr.symbol || lr.leg_id}`;
+          keys.add(key);
+          point[key] = lr.pnl ?? 0;
+        });
+      } else if (r.legs) {
         Object.entries(r.legs).forEach(([legName, legData]) => {
           const key = `leg_${legName}`;
           keys.add(key);

@@ -1,8 +1,11 @@
 import uuid
 import asyncio
 import json
+import csv
+import io
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 
 from app.models import strategies_store, backtests_store
 from app.schemas import (
@@ -50,6 +53,9 @@ async def start_backtest(config: BacktestConfig):
         finally:
             backtests_store[backtest_id].status = engine.status
             backtests_store[backtest_id].results = engine.results
+            backtests_store[backtest_id].events = engine.events
+            backtests_store[backtest_id].analytics = engine.compute_analytics()
+            backtests_store[backtest_id].data_validation = engine.data_validation
 
     asyncio.get_event_loop().create_task(_run_backtest())
 
@@ -128,6 +134,86 @@ def get_backtest_results(backtest_id: str):
         "results_count": len(results),
         "results": [r.model_dump() for r in results],
     }
+
+
+@router.get("/{backtest_id}/analytics")
+def get_backtest_analytics(backtest_id: str):
+    """Get analytics summary."""
+    engine = _engines.get(backtest_id)
+    if engine is None:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+    analytics = engine.compute_analytics()
+    return analytics.model_dump()
+
+
+@router.get("/{backtest_id}/events")
+def get_backtest_events(backtest_id: str):
+    """Get trade event log."""
+    engine = _engines.get(backtest_id)
+    if engine is None:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+    return {"events": [e.model_dump() for e in engine.events]}
+
+
+@router.get("/{backtest_id}/validation")
+def get_data_validation(backtest_id: str):
+    """Get data validation results."""
+    engine = _engines.get(backtest_id)
+    state = backtests_store.get(backtest_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+    if state.data_validation:
+        return state.data_validation.model_dump()
+    return {"message": "No validation data available yet"}
+
+
+@router.get("/{backtest_id}/export/csv")
+def export_csv(backtest_id: str):
+    """Export backtest results as CSV."""
+    engine = _engines.get(backtest_id)
+    state = backtests_store.get(backtest_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Backtest not found")
+
+    results = engine.results if engine else state.results
+    if not results:
+        raise HTTPException(status_code=400, detail="No results to export")
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header
+    first = results[0]
+    header = ["Timestamp", "Total_PnL"]
+    for lr in first.leg_results:
+        prefix = lr.symbol or lr.leg_id
+        header.extend([
+            f"{prefix}_Price", f"{prefix}_PnL", f"{prefix}_State",
+            f"{prefix}_Delta", f"{prefix}_Gamma", f"{prefix}_Theta",
+            f"{prefix}_Vega", f"{prefix}_IV",
+        ])
+    header.extend(["Capital", "Used_Margin", "Drawdown"])
+    writer.writerow(header)
+
+    # Rows
+    for r in results:
+        row = [r.timestamp, f"{r.total_pnl:.2f}"]
+        for lr in r.leg_results:
+            row.extend([
+                f"{lr.current_price:.2f}", f"{lr.pnl:.2f}",
+                lr.state, f"{lr.delta:.4f}", f"{lr.gamma:.6f}",
+                f"{lr.theta:.4f}", f"{lr.vega:.4f}", f"{lr.iv:.4f}",
+            ])
+        cap = r.capital
+        row.extend([f"{cap.current_capital:.2f}", f"{cap.used_margin:.2f}", f"{cap.drawdown:.2f}"])
+        writer.writerow(row)
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=backtest_{backtest_id}.csv"},
+    )
 
 
 @router.websocket("/{backtest_id}/ws")

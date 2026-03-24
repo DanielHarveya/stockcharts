@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
 import useStore from '../store/useStore';
 import BacktestControls from './BacktestControls';
+import ExecutionConfig from './ExecutionConfig';
 
 const INTERVAL_OPTIONS = [
   { value: 1, label: '1 min' },
@@ -175,6 +176,9 @@ function BacktestRunner() {
           </div>
         </div>
       </div>
+
+      {/* Advanced Execution Config */}
+      <ExecutionConfig />
 
       {/* Controls */}
       <div className="pt-2 border-t border-slate-700/50">
