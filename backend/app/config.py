@@ -24,6 +24,14 @@ class AppConfig:
         self.db_password: Optional[str] = None
         self.db_name: Optional[str] = None
 
+        # SSH tunnel settings
+        self.ssh_enabled: bool = False
+        self.ssh_host: Optional[str] = None
+        self.ssh_port: int = 22
+        self.ssh_user: Optional[str] = None
+        self.ssh_password: Optional[str] = None
+        self.ssh_private_key: Optional[str] = None
+
         # OHLC table column mapping
         self.ohlc_table_name: Optional[str] = None
         self.ohlc_instrument_token_col: Optional[str] = None
@@ -89,6 +97,22 @@ class AppConfig:
         self.db_user = user
         self.db_password = password
         self.db_name = name
+
+    def set_ssh_config(
+        self,
+        enabled: bool = False,
+        host: Optional[str] = None,
+        port: int = 22,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+        private_key: Optional[str] = None,
+    ) -> None:
+        self.ssh_enabled = enabled
+        self.ssh_host = host
+        self.ssh_port = port
+        self.ssh_user = user
+        self.ssh_password = password
+        self.ssh_private_key = private_key
 
     def set_ohlc_mapping(
         self,

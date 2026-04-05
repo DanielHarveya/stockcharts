@@ -26,6 +26,17 @@ def connect_database(config: DatabaseConfig):
         password=config.db_password,
         name=config.db_name,
     )
+    if config.ssh:
+        app_config.set_ssh_config(
+            enabled=config.ssh.ssh_enabled,
+            host=config.ssh.ssh_host,
+            port=config.ssh.ssh_port,
+            user=config.ssh.ssh_user,
+            password=config.ssh.ssh_password,
+            private_key=config.ssh.ssh_private_key,
+        )
+    else:
+        app_config.set_ssh_config(enabled=False)
     reset_engine()
     try:
         test_connection()
@@ -34,6 +45,7 @@ def connect_database(config: DatabaseConfig):
         app_config.db_user = None
         app_config.db_password = None
         app_config.db_name = None
+        app_config.set_ssh_config(enabled=False)
         reset_engine()
         raise HTTPException(status_code=400, detail=f"Connection failed: {exc}")
     return {"message": "Connected successfully"}

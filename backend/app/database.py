@@ -1,3 +1,4 @@
+import io
 from typing import Optional
 
 from sqlalchemy import create_engine, text
@@ -8,6 +9,53 @@ from app.config import get_config
 
 _engine: Optional[Engine] = None
 _session_factory: Optional[sessionmaker] = None
+_ssh_tunnel = None
+
+
+def _start_ssh_tunnel():
+    """Start an SSH tunnel to the database if SSH is enabled."""
+    global _ssh_tunnel
+    config = get_config()
+
+    if _ssh_tunnel is not None:
+        try:
+            _ssh_tunnel.close()
+        except Exception:
+            pass
+        _ssh_tunnel = None
+
+    if not config.ssh_enabled:
+        return None
+
+    from sshtunnel import SSHTunnelForwarder
+    import paramiko
+
+    ssh_kwargs = {
+        "ssh_address_or_host": (config.ssh_host, config.ssh_port),
+        "ssh_username": config.ssh_user,
+        "remote_bind_address": (config.db_host, config.db_port),
+    }
+
+    if config.ssh_private_key:
+        pkey = paramiko.RSAKey.from_private_key(io.StringIO(config.ssh_private_key))
+        ssh_kwargs["ssh_pkey"] = pkey
+    elif config.ssh_password:
+        ssh_kwargs["ssh_password"] = config.ssh_password
+
+    _ssh_tunnel = SSHTunnelForwarder(**ssh_kwargs)
+    _ssh_tunnel.start()
+    return _ssh_tunnel
+
+
+def _get_connection_string() -> str:
+    """Build the connection string, using the SSH tunnel's local port if active."""
+    config = get_config()
+    if _ssh_tunnel and _ssh_tunnel.is_active:
+        return (
+            f"postgresql://{config.db_user}:{config.db_password}"
+            f"@127.0.0.1:{_ssh_tunnel.local_bind_port}/{config.db_name}"
+        )
+    return config.connection_string
 
 
 def get_engine() -> Engine:
@@ -16,7 +64,11 @@ def get_engine() -> Engine:
     config = get_config()
     if not config.is_db_configured:
         raise RuntimeError("Database is not configured. Please set connection parameters first.")
-    connection_string = config.connection_string
+
+    if config.ssh_enabled:
+        _start_ssh_tunnel()
+
+    connection_string = _get_connection_string()
     if _engine is None or str(_engine.url) != connection_string:
         _engine = create_engine(connection_string, pool_pre_ping=True, pool_size=5, max_overflow=10)
     return _engine
@@ -46,9 +98,15 @@ def test_connection() -> bool:
 
 
 def reset_engine() -> None:
-    """Reset the engine (used when connection settings change)."""
-    global _engine, _session_factory
+    """Reset the engine and close any SSH tunnel."""
+    global _engine, _session_factory, _ssh_tunnel
     if _engine is not None:
         _engine.dispose()
     _engine = None
     _session_factory = None
+    if _ssh_tunnel is not None:
+        try:
+            _ssh_tunnel.close()
+        except Exception:
+            pass
+        _ssh_tunnel = None

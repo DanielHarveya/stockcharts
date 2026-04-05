@@ -5,12 +5,22 @@ from pydantic import BaseModel, Field
 
 # ── Database Configuration ──────────────────────────────────────────────
 
+class SSHConfig(BaseModel):
+    ssh_enabled: bool = False
+    ssh_host: Optional[str] = None
+    ssh_port: int = 22
+    ssh_user: Optional[str] = None
+    ssh_password: Optional[str] = None
+    ssh_private_key: Optional[str] = None
+
+
 class DatabaseConfig(BaseModel):
     db_host: str
     db_port: int = 5432
     db_user: str
     db_password: str
     db_name: str
+    ssh: Optional[SSHConfig] = None
 
 
 class OHLCMapping(BaseModel):

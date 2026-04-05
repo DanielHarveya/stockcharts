@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Database, CheckCircle, XCircle, Loader2, Layers } from 'lucide-react';
+import { Database, CheckCircle, XCircle, Loader2, Layers, Shield } from 'lucide-react';
 import useStore from '../store/useStore';
 import { dbAPI } from '../api';
 
 function DatabaseConfig() {
   const {
     dbConfig, setDbConfig, dbConnected, dbConnecting, dbError, connectDb,
+    sshConfig, setSshConfig,
     tables, ohlcMapping, instrumentMapping, setOhlcMapping, setInstrumentMapping,
     saveMapping, mappingConfigured, mappingSaving,
   } = useStore();
@@ -160,6 +161,123 @@ function DatabaseConfig() {
               onChange={(e) => setDbConfig({ dbname: e.target.value })}
             />
           </div>
+        </div>
+
+        {/* SSH Tunnel Toggle */}
+        <div className="mt-6 border-t border-slate-700/50 pt-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-600/20 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-white">SSH Tunnel</h3>
+              <p className="text-xs text-slate-400">Connect through an SSH bastion host</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={sshConfig.enabled}
+              onClick={() => setSshConfig({ enabled: !sshConfig.enabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                sshConfig.enabled ? 'bg-indigo-600' : 'bg-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  sshConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {sshConfig.enabled && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">SSH Host</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="bastion.example.com"
+                    value={sshConfig.host}
+                    onChange={(e) => setSshConfig({ host: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">SSH Port</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="22"
+                    value={sshConfig.port}
+                    onChange={(e) => setSshConfig({ port: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">SSH Username</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="ubuntu"
+                    value={sshConfig.user}
+                    onChange={(e) => setSshConfig({ user: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Authentication Method</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="sshAuthMethod"
+                      value="password"
+                      checked={sshConfig.authMethod === 'password'}
+                      onChange={() => setSshConfig({ authMethod: 'password' })}
+                      className="text-indigo-500 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-300">Password</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="sshAuthMethod"
+                      value="key"
+                      checked={sshConfig.authMethod === 'key'}
+                      onChange={() => setSshConfig({ authMethod: 'key' })}
+                      className="text-indigo-500 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-300">Private Key</span>
+                  </label>
+                </div>
+              </div>
+
+              {sshConfig.authMethod === 'password' ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">SSH Password</label>
+                  <input
+                    type="password"
+                    className="input-field"
+                    placeholder="Enter SSH password"
+                    value={sshConfig.password}
+                    onChange={(e) => setSshConfig({ password: e.target.value })}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">Private Key (PEM)</label>
+                  <textarea
+                    className="input-field font-mono text-xs"
+                    rows={4}
+                    placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
+                    value={sshConfig.privateKey}
+                    onChange={(e) => setSshConfig({ privateKey: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {dbError && (

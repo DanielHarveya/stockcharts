@@ -10,6 +10,15 @@ const useStore = create((set, get) => ({
     password: '',
     dbname: '',
   },
+  sshConfig: {
+    enabled: false,
+    host: '',
+    port: '22',
+    user: '',
+    password: '',
+    privateKey: '',
+    authMethod: 'password',
+  },
   dbConnected: false,
   dbConnecting: false,
   dbError: null,
@@ -62,11 +71,25 @@ const useStore = create((set, get) => ({
   setDbConfig: (config) =>
     set((state) => ({ dbConfig: { ...state.dbConfig, ...config } })),
 
+  setSshConfig: (config) =>
+    set((state) => ({ sshConfig: { ...state.sshConfig, ...config } })),
+
   connectDb: async () => {
-    const { dbConfig } = get();
+    const { dbConfig, sshConfig } = get();
     set({ dbConnecting: true, dbError: null });
     try {
-      await dbAPI.connect(dbConfig);
+      const payload = { ...dbConfig };
+      if (sshConfig.enabled) {
+        payload.ssh = {
+          ssh_enabled: true,
+          ssh_host: sshConfig.host,
+          ssh_port: parseInt(sshConfig.port, 10) || 22,
+          ssh_user: sshConfig.user,
+          ssh_password: sshConfig.authMethod === 'password' ? sshConfig.password : null,
+          ssh_private_key: sshConfig.authMethod === 'key' ? sshConfig.privateKey : null,
+        };
+      }
+      await dbAPI.connect(payload);
       set({ dbConnected: true, dbConnecting: false });
       await get().fetchTables();
       // Try to load existing mapping
